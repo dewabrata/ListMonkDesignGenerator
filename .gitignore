@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment files
+backend/.env
+
+# Temp files
+backend/temp/
+
+# Build output
+frontend/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test files
+backend/test-*.js
+backend/check-*.js
