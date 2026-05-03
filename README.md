@@ -1,16 +1,53 @@
-# Setup Guide — Listmonk Template Generator
+# 📧 Listmonk Design Generator
 
-## Prasyarat
+> **AI-powered email mockup to Listmonk-compatible HTML template converter.**
 
-- Node.js 18+
-- Listmonk instance yang sudah running
-- OpenAI API key dengan akses ke `gpt-4o` dan `gpt-image-1`
+Upload a screenshot or image of an email design, and let AI automatically generate a fully responsive, table-based HTML email template ready for [Listmonk](https://listmonk.app/) — the self-hosted newsletter platform.
 
 ---
 
-## 1. Install Dependencies
+## ✨ Features
+
+- **🖼️ Image-to-Template** — Upload an email mockup image and get a production-ready HTML template
+- **🤖 AI-Powered Pipeline** — Multi-step pipeline using OpenAI GPT for image analysis, asset generation, and HTML creation
+- **🎨 Image Generation** — Automatically generates placeholder illustrations using GPT Image Generation (gpt-image-2)
+- **✂️ Smart Asset Extraction** — Crops logos and brand assets from the mockup, uploads them to Listmonk media
+- **📝 Live Code Editor** — Split-view editor with Monaco Editor for code editing and real-time HTML preview
+- **🔀 Drag & Drop Sections** — Reorder email sections visually in the preview panel
+- **💬 AI Chat Revisor** — Iterate on the template with AI-powered chat instructions
+- **📤 Direct Listmonk Integration** — Save templates directly to Listmonk as Campaign (HTML) or Visual (drag-drop) format
+- **🔒 Secure Single-User Auth** — Session-based authentication with bcrypt password hashing
+- **📱 Go Template Variables** — Auto-detects and injects Listmonk template variables (`{{ .Subscriber.FirstName }}`, `{{ UnsubscribeURL }}`, etc.)
+
+---
+
+## 🏗️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 18 + Vite + TailwindCSS |
+| **Backend** | Node.js + Express |
+| **AI** | OpenAI GPT (Vision + Chat + Image Generation) |
+| **Image Processing** | Sharp (crop, resize) |
+| **Code Editor** | Monaco Editor |
+| **Newsletter Platform** | Listmonk API |
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- Listmonk instance (self-hosted)
+- OpenAI API key with access to GPT models and image generation
+
+### 1. Clone & Install
 
 ```bash
+git clone https://github.com/dewabrata/ListMonkDesignGenerator.git
+cd ListMonkDesignGenerator
+
 # Backend
 cd backend
 npm install
@@ -20,40 +57,125 @@ cd ../frontend
 npm install
 ```
 
----
-
-## 2. Konfigurasi Environment Backend
+### 2. Configure Environment
 
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-Edit file `.env`:
+Edit `.env`:
 
 ```env
 AUTH_USERNAME=admin
-AUTH_PASSWORD_HASH=       # Generate dengan: node generate-hash.js passwordAnda
-SESSION_SECRET=           # Random string panjang, misal: openssl rand -hex 32
-OPENAI_API_KEY=sk-...
+AUTH_PASSWORD_HASH=       # Generate: node generate-hash.js yourPassword
+SESSION_SECRET=           # Random string: openssl rand -hex 32
+
+OPENAI_API_KEY=sk-proj-...
+
 LISTMONK_BASE_URL=https://listmonk.example.com
 LISTMONK_API_USER=api_user
 LISTMONK_API_TOKEN=your-token
+LISTMONK_USE_BASIC_AUTH=false
+
 PORT=3001
-NODE_ENV=production
+NODE_ENV=development
 ```
 
 ### Generate Password Hash
 
 ```bash
 cd backend
-node generate-hash.js passwordAnda
-# Salin output ke AUTH_PASSWORD_HASH di .env
+node generate-hash.js yourPassword
+# Copy the output to AUTH_PASSWORD_HASH in .env
+```
+
+### 3. Run Development
+
+```bash
+# Terminal 1: Backend
+cd backend
+npm run dev     # nodemon with hot reload
+
+# Terminal 2: Frontend
+cd frontend
+npm run dev     # Vite dev server (proxy to backend:3001)
+```
+
+Open: **http://localhost:5173**
+
+---
+
+## 📋 How It Works
+
+```
+┌─────────────┐     ┌──────────────┐     ┌───────────────┐     ┌──────────────┐
+│  Upload      │ ──▶ │  AI Analysis │ ──▶ │  Asset        │ ──▶ │  HTML        │
+│  Mockup      │     │  (GPT Vision)│     │  Generation   │     │  Generation  │
+│  Image       │     │  Pass 1      │     │  & Upload     │     │  Pass 2      │
+└─────────────┘     └──────────────┘     └───────────────┘     └──────────────┘
+                                                                       │
+                    ┌──────────────┐     ┌───────────────┐             │
+                    │  Save to     │ ◀── │  Edit &       │ ◀───────────┘
+                    │  Listmonk    │     │  Review       │
+                    └──────────────┘     └───────────────┘
+```
+
+1. **Upload** — Drag & drop an email mockup image
+2. **Analysis** — GPT Vision analyzes the design, identifies sections, images, text, and template variables
+3. **Asset Processing** — Brand logos are cropped from the mockup; placeholder images are regenerated by AI
+4. **Upload to Listmonk** — All assets are uploaded to Listmonk media library
+5. **HTML Generation** — GPT generates a table-based, email-safe HTML template with Listmonk variables
+6. **Edit & Review** — Split-view editor for code editing, visual preview, and AI chat revision
+7. **Save to Listmonk** — Save directly as a Campaign (HTML) or Visual (drag-drop) template
+
+---
+
+## 🏛️ Project Structure
+
+```
+ListMonkDesignGenerator/
+├── backend/
+│   ├── src/
+│   │   ├── app.js                         # Express entry point
+│   │   ├── controllers/
+│   │   │   ├── authController.js          # Login/logout
+│   │   │   ├── uploadController.js        # File upload + job polling
+│   │   │   └── chatController.js          # AI chat revisor
+│   │   ├── services/
+│   │   │   ├── aiOrchestrator.js          # 7-step AI pipeline + job store
+│   │   │   ├── imageProcessor.js          # Sharp crop/resize
+│   │   │   ├── openaiVisionClient.js      # GPT Vision + HTML generation
+│   │   │   ├── openaiImageClient.js       # GPT Image generation
+│   │   │   ├── listmonkClient.js          # Listmonk API wrapper
+│   │   │   └── htmlToVisualConverter.js   # HTML → Visual template converter
+│   │   ├── middleware/
+│   │   │   └── auth.js                    # Session auth middleware
+│   │   └── routes/
+│   ├── .env.example
+│   └── package.json
+└── frontend/
+    ├── src/
+    │   ├── components/
+    │   │   ├── LoginPage.jsx              # Glassmorphism login
+    │   │   ├── UploadPage.jsx             # Drag & drop upload
+    │   │   ├── ProcessingScreen.jsx       # 7-step progress animation
+    │   │   ├── EditorPage.jsx             # Split-view editor
+    │   │   ├── SaveModal.jsx              # Template type selector
+    │   │   └── editor/
+    │   │       ├── PreviewPanel.jsx       # Drag & drop section reorder
+    │   │       ├── CodeEditorPanel.jsx    # Monaco Editor
+    │   │       └── ChatPanel.jsx          # AI chat revisor
+    │   ├── context/AppContext.jsx          # Global state management
+    │   └── index.css                      # Dark theme + animations
+    └── package.json
 ```
 
 ---
 
-## 3. Build Frontend (Produksi)
+## 🌐 Production Deployment
+
+### Build Frontend
 
 ```bash
 cd frontend
@@ -61,20 +183,15 @@ npm run build
 # Output: frontend/dist/
 ```
 
----
-
-## 4. Jalankan Backend (Produksi)
+### Run Backend (serves frontend static files)
 
 ```bash
 cd backend
-npm start
-# Server berjalan di http://localhost:3001
-# Frontend static files di-serve dari frontend/dist/
+NODE_ENV=production npm start
+# Server at http://localhost:3001
 ```
 
----
-
-## 5. Konfigurasi Nginx (Reverse Proxy)
+### Nginx Reverse Proxy
 
 ```nginx
 server {
@@ -84,7 +201,6 @@ server {
     ssl_certificate     /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
 
-    # Upload file max 15MB (lebih dari batas 10MB untuk headroom)
     client_max_body_size 15M;
 
     location / {
@@ -95,99 +211,25 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_cache_bypass $http_upgrade;
-
-        # Timeout lebih lama untuk AI pipeline (bisa 90 detik)
         proxy_read_timeout 120s;
         proxy_send_timeout 120s;
     }
 }
-
-# Redirect HTTP ke HTTPS
-server {
-    listen 80;
-    server_name yourdomain.com;
-    return 301 https://$server_name$request_uri;
-}
 ```
 
 ---
 
-## 6. Development Mode (Lokal)
+## 🔒 Security
 
-Jalankan backend dan frontend secara terpisah:
-
-```bash
-# Terminal 1: Backend
-cd backend
-npm run dev     # nodemon, hot reload
-
-# Terminal 2: Frontend
-cd frontend
-npm run dev     # Vite dev server dengan proxy ke backend:3001
-```
-
-Buka: http://localhost:5173
+- Session-based auth (8h TTL, HttpOnly + Secure + SameSite cookies)
+- Passwords hashed with bcrypt (cost factor 10)
+- All secrets in `.env`, never exposed to frontend
+- File upload validation (MIME type + magic bytes)
+- Temp files auto-cleanup after pipeline (TTL 10 min)
+- Input sanitization before Listmonk API calls
 
 ---
 
-## Struktur Project
+## 📄 License
 
-```
-ListMonkDesignGenerator/
-├── FSD/
-│   └── fsd_listmonk_generator.md
-├── backend/
-│   ├── src/
-│   │   ├── app.js                    # Express entry point
-│   │   ├── controllers/
-│   │   │   ├── authController.js     # Login/logout
-│   │   │   ├── uploadController.js   # File upload + polling
-│   │   │   └── chatController.js     # Chat revisor AI
-│   │   ├── services/
-│   │   │   ├── aiOrchestrator.js     # Pipeline 8-langkah + job store
-│   │   │   ├── imageProcessor.js     # Sharp crop/resize
-│   │   │   ├── openaiVisionClient.js # GPT-4o Vision + Chat
-│   │   │   ├── openaiImageClient.js  # gpt-image-1 generation
-│   │   │   └── listmonkClient.js     # Listmonk API wrapper
-│   │   ├── middleware/
-│   │   │   └── auth.js               # Session auth middleware
-│   │   └── routes/
-│   │       ├── auth.js
-│   │       ├── process.js
-│   │       ├── chat.js
-│   │       └── listmonk.js
-│   ├── temp/                         # Auto-created, temp files
-│   ├── generate-hash.js              # Password hash utility
-│   ├── .env.example
-│   └── package.json
-└── frontend/
-    ├── src/
-    │   ├── components/
-    │   │   ├── LoginPage.jsx         # Glassmorphism login
-    │   │   ├── UploadPage.jsx        # Drag & drop upload
-    │   │   ├── ProcessingScreen.jsx  # 7-step progress
-    │   │   ├── EditorPage.jsx        # Split-view editor
-    │   │   ├── SaveModal.jsx         # Template selector
-    │   │   ├── editor/
-    │   │   │   ├── PreviewPanel.jsx  # Drag & drop sections
-    │   │   │   ├── CodeEditorPanel.jsx # Monaco Editor
-    │   │   │   └── ChatPanel.jsx     # AI chat revisor
-    │   │   └── shared/
-    │   │       └── Toast.jsx
-    │   ├── context/
-    │   │   └── AppContext.jsx        # Global state
-    │   ├── App.jsx                   # Root + auth check
-    │   └── index.css                 # Dark theme + animations
-    └── package.json
-```
-
----
-
-## Keamanan
-
-- Session 8 jam, HttpOnly + Secure + SameSite=Strict
-- Password di-hash dengan bcrypt (cost factor 10)
-- Semua secrets di `.env`, tidak pernah expose ke frontend
-- File upload: validasi MIME type + magic bytes
-- Temp files: auto-cleanup setelah pipeline selesai (TTL 10 menit)
-- Input sanitasi sebelum dikirim ke Listmonk API
+MIT
