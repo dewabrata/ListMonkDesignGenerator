@@ -83,7 +83,7 @@ const UploadPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col pt-12">
       {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-3">

@@ -4,7 +4,7 @@ const AppContext = createContext(null);
 
 export const AppProvider = ({ children }) => {
   // ── Navigation ──
-  const [currentPage, setCurrentPage] = useState('upload'); // 'upload' | 'processing' | 'editor'
+  const [currentPage, setCurrentPage] = useState('analytics'); // 'analytics' | 'upload' | 'processing' | 'editor'
 
   // ── Job state ──
   const [jobId, setJobId] = useState(null);

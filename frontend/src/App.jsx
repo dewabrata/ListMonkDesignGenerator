@@ -5,6 +5,8 @@ import LoginPage from './components/LoginPage';
 import UploadPage from './components/UploadPage';
 import ProcessingScreen from './components/ProcessingScreen';
 import EditorPage from './components/EditorPage';
+import AnalyticsPage from './components/AnalyticsPage';
+import Navbar from './components/shared/Navbar';
 import Toast from './components/shared/Toast';
 
 // Axios default config
@@ -37,9 +39,12 @@ const AppInner = () => {
 
   return (
     <>
-      {currentPage === 'upload' && <UploadPage />}
-      {currentPage === 'processing' && <ProcessingScreen />}
-      {currentPage === 'editor' && <EditorPage />}
+      <Navbar onLogout={() => setIsLoggedIn(false)} />
+
+      {currentPage === 'analytics'   && <AnalyticsPage />}
+      {currentPage === 'upload'      && <UploadPage />}
+      {currentPage === 'processing'  && <ProcessingScreen />}
+      {currentPage === 'editor'      && <EditorPage />}
 
       {/* Toast container */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">

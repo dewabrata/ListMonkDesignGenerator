@@ -63,7 +63,7 @@ const ProcessingScreen = () => {
   const progressPct = totalSteps > 0 ? Math.round((step / totalSteps) * 100) : 0;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 pt-20">
       {/* Ambient glow */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-brand-600/15 rounded-full blur-3xl" />

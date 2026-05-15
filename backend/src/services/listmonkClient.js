@@ -154,4 +154,182 @@ const updateTemplate = async (id, name, type, body) => {
   return { id: data.id, name: data.name };
 };
 
-module.exports = { uploadMedia, getTemplates, createTemplate, updateTemplate };
+/**
+ * Ambil semua campaign dari Listmonk (semua halaman).
+ * @returns {Promise<Array>}
+ */
+const getCampaigns = async () => {
+  const perPage = 100;
+  let page = 1;
+  let all = [];
+
+  while (true) {
+    const response = await axios.get(`${getBaseURL()}/api/campaigns`, {
+      headers: getAuthHeader(),
+      params: { page, per_page: perPage },
+    });
+    const data = response.data?.data;
+    const results = data?.results || [];
+    all = all.concat(results);
+    if (all.length >= (data?.total || 0) || results.length === 0) break;
+    page++;
+  }
+
+  return all.map((c) => ({
+    id: c.id,
+    name: c.name,
+    subject: c.subject,
+    status: c.status,
+    sent: c.sent,
+    to_send: c.to_send,
+    views: c.views,
+    clicks: c.clicks,
+    created_at: c.created_at,
+  }));
+};
+
+/**
+ * Ambil tracked URLs untuk campaign tertentu.
+ * @param {number} campaignId
+ * @returns {Promise<string[]>}
+ */
+const getCampaignUrls = async (campaignId) => {
+  try {
+    const response = await axios.get(`${getBaseURL()}/api/campaigns/analytics/links`, {
+      headers: getAuthHeader(),
+      params: { id: campaignId, from: '2020-01-01', to: '2030-01-01' },
+    });
+    return (response.data?.data || []).map((item) => item.url || '');
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Ambil semua subscriber (semua halaman).
+ * @returns {Promise<Array>}
+ */
+const getAllSubscribers = async () => {
+  const perPage = 100;
+  let page = 1;
+  let all = [];
+
+  while (true) {
+    const response = await axios.get(`${getBaseURL()}/api/subscribers`, {
+      headers: getAuthHeader(),
+      params: { page, per_page: perPage },
+    });
+    const data = response.data?.data;
+    const results = data?.results || [];
+    all = all.concat(results);
+    if (all.length >= (data?.total || 0) || results.length === 0) break;
+    page++;
+  }
+
+  return all;
+};
+
+/**
+ * Export aktivitas subscriber.
+ * @param {number} subscriberId
+ * @returns {Promise<Object>}
+ */
+const exportSubscriber = async (subscriberId) => {
+  const response = await axios.get(`${getBaseURL()}/api/subscribers/${subscriberId}/export`, {
+    headers: getAuthHeader(),
+  });
+  return response.data;
+};
+
+/**
+ * Ambil analytics lengkap untuk satu campaign.
+ * Includes per-subscriber views, matched clicks, dan detail URL per klik.
+ * @param {number} campaignId
+ * @returns {Promise<Object>}
+ */
+const getCampaignAnalytics = async (campaignId) => {
+  // 1. Info campaign
+  const campaignResp = await axios.get(`${getBaseURL()}/api/campaigns/${campaignId}`, {
+    headers: getAuthHeader(),
+  });
+  const campaign = campaignResp.data?.data;
+
+  // 2. Tracked URLs
+  const urls = await getCampaignUrls(campaignId);
+  const urlsSet = new Set(urls);
+
+  const normUrl = (u) => (u ? u.replace(/&amp;/g, '&').trim() : '');
+  const normalizedUrlsSet = new Set([...urlsSet].map(normUrl));
+
+  // 3. Semua subscriber
+  const subscribers = await getAllSubscribers();
+
+  // 4. Per-subscriber activity (sequential — tidak perlu parallel di Node)
+  const subscriberResults = [];
+  for (const sub of subscribers) {
+    try {
+      const data = await exportSubscriber(sub.id);
+
+      const viewRecords = (data.campaign_views || []).filter(
+        (v) => v.campaign === campaign.subject
+      );
+      const totalViews = viewRecords.reduce((sum, v) => sum + (v.views || 0), 0);
+
+      const allClicks = data.link_clicks || [];
+      const matchedClicks = allClicks.filter(
+        (c) => normalizedUrlsSet.has(normUrl(c.url))
+      );
+      const totalMatchedClicks = matchedClicks.reduce((sum, c) => sum + (c.clicks || 0), 0);
+      const totalAllClicks = allClicks.reduce((sum, c) => sum + (c.clicks || 0), 0);
+
+      subscriberResults.push({
+        id: sub.id,
+        email: sub.email,
+        name: sub.name || '',
+        status: sub.status,
+        totalViews,
+        totalMatchedClicks,
+        totalAllClicks,
+        matchedClicks: matchedClicks.map((c) => ({ url: c.url, clicks: c.clicks || 0 })),
+        allClicks: allClicks.map((c) => ({ url: c.url, clicks: c.clicks || 0 })),
+      });
+    } catch {
+      subscriberResults.push({
+        id: sub.id,
+        email: sub.email,
+        name: sub.name || '',
+        status: sub.status,
+        totalViews: 0,
+        totalMatchedClicks: 0,
+        totalAllClicks: 0,
+        matchedClicks: [],
+        allClicks: [],
+      });
+    }
+  }
+
+  return {
+    campaign: {
+      id: campaign.id,
+      name: campaign.name,
+      subject: campaign.subject,
+      status: campaign.status,
+      sent: campaign.sent,
+      to_send: campaign.to_send,
+      views: campaign.views,
+      clicks: campaign.clicks,
+      created_at: campaign.created_at,
+    },
+    trackedUrls: urls,
+    subscribers: subscriberResults,
+  };
+};
+
+module.exports = {
+  uploadMedia,
+  getTemplates,
+  createTemplate,
+  updateTemplate,
+  getCampaigns,
+  getCampaignAnalytics,
+};

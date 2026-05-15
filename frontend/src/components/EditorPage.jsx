@@ -29,7 +29,7 @@ const EditorPage = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden pt-12">
       {/* ── TOP TOOLBAR ── */}
       <header className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-surface-950/80" style={{ backdropFilter: 'blur(20px)' }}>
         <div className="flex items-center gap-3">

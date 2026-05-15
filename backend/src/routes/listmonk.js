@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
-const { getTemplates, createTemplate, updateTemplate } = require('../services/listmonkClient');
+const { getTemplates, createTemplate, updateTemplate, getCampaigns, getCampaignAnalytics } = require('../services/listmonkClient');
 
 /**
  * GET /api/listmonk/templates
@@ -67,6 +67,50 @@ router.post('/templates/save', requireAuth, async (req, res) => {
     return res.status(503).json({
       success: false,
       message: `Listmonk error: ${listmonkMsg}`,
+    });
+  }
+});
+
+/**
+ * GET /api/listmonk/campaigns
+ * Ambil semua campaign dari Listmonk.
+ */
+router.get('/campaigns', requireAuth, async (req, res) => {
+  try {
+    const campaigns = await getCampaigns();
+    return res.json({ campaigns });
+  } catch (err) {
+    console.error('[Listmonk] Get campaigns error:', err.message);
+    return res.status(503).json({
+      success: false,
+      message: 'Tidak dapat mengambil daftar campaign dari Listmonk.',
+    });
+  }
+});
+
+/**
+ * GET /api/listmonk/campaigns/:id/analytics
+ * Ambil analytics lengkap (per-subscriber views + clicks) untuk satu campaign.
+ * Ini adalah blocking request — bisa memakan waktu tergantung jumlah subscriber.
+ */
+router.get('/campaigns/:id/analytics', requireAuth, async (req, res) => {
+  const campaignId = parseInt(req.params.id, 10);
+  if (!campaignId || isNaN(campaignId)) {
+    return res.status(400).json({ success: false, message: 'Campaign ID tidak valid.' });
+  }
+
+  try {
+    const analytics = await getCampaignAnalytics(campaignId);
+    return res.json({ success: true, data: analytics });
+  } catch (err) {
+    console.error('[Listmonk] Get campaign analytics error:', err.message);
+    if (err.response?.status === 404) {
+      return res.status(404).json({ success: false, message: 'Campaign tidak ditemukan.' });
+    }
+    const listmonkMsg = err.response?.data?.message || err.message;
+    return res.status(503).json({
+      success: false,
+      message: `Gagal mengambil analytics: ${listmonkMsg}`,
     });
   }
 });
