@@ -206,18 +206,36 @@ const getCampaignUrls = async (campaignId) => {
 };
 
 /**
- * Ambil semua subscriber (semua halaman).
+ * Ambil subscriber (semua halaman).
+ * Jika listIds diberikan, hanya subscriber di list tersebut yang diambil
+ * (yaitu penerima campaign), bukan seluruh subscriber di Listmonk.
+ * @param {number[]} listIds - daftar list_id; kosong = semua subscriber
  * @returns {Promise<Array>}
  */
-const getAllSubscribers = async () => {
+const getAllSubscribers = async (listIds = []) => {
   const perPage = 100;
   let page = 1;
   let all = [];
 
+  // Serializer manual supaya list_id dikirim berulang (list_id=1&list_id=2),
+  // sesuai format yang diharapkan Listmonk.
+  const serialize = (params) => {
+    const parts = [];
+    for (const [key, value] of Object.entries(params)) {
+      if (Array.isArray(value)) {
+        value.forEach((v) => parts.push(`${key}=${encodeURIComponent(v)}`));
+      } else if (value !== undefined && value !== null) {
+        parts.push(`${key}=${encodeURIComponent(value)}`);
+      }
+    }
+    return parts.join('&');
+  };
+
   while (true) {
     const response = await axios.get(`${getBaseURL()}/api/subscribers`, {
       headers: getAuthHeader(),
-      params: { page, per_page: perPage },
+      params: { page, per_page: perPage, list_id: listIds },
+      paramsSerializer: serialize,
     });
     const data = response.data?.data;
     const results = data?.results || [];
@@ -284,8 +302,14 @@ const getCampaignAnalytics = async (campaignId) => {
   const normUrl = (u) => (u ? u.replace(/&amp;/g, '&').trim() : '');
   const normalizedUrlsSet = new Set([...urlsSet].map(normUrl));
 
-  // 3. Semua subscriber
-  const subscribers = await getAllSubscribers();
+  // 3. Subscriber penerima campaign — difilter berdasarkan list tujuan campaign,
+  //    bukan seluruh subscriber di Listmonk.
+  const listIds = (campaign.lists || []).map((l) => l.id).filter(Boolean);
+  const subscribers = await getAllSubscribers(listIds);
+  console.log(
+    `[Listmonk] Campaign id=${campaignId} dikirim ke list=[${listIds.join(',')}] ` +
+    `→ ${subscribers.length} subscriber penerima.`
+  );
 
   // 4. Per-subscriber activity (sequential — tidak perlu parallel di Node)
   const subscriberResults = [];
