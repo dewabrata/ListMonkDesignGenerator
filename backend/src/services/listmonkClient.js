@@ -266,11 +266,19 @@ const getCampaignAnalytics = async (campaignId) => {
 
   // 4. Per-subscriber activity (sequential — tidak perlu parallel di Node)
   const subscriberResults = [];
+  let exportOkCount = 0;
+  let exportFailCount = 0;
+  let withViewsCount = 0;
+  let firstFailLogged = false;
   for (const sub of subscribers) {
     try {
       const data = await exportSubscriber(sub.id);
+      exportOkCount++;
 
-      const viewRecords = (data.campaign_views || []).filter(
+      const allViewRecords = data.campaign_views || [];
+      if (allViewRecords.length > 0) withViewsCount++;
+
+      const viewRecords = allViewRecords.filter(
         (v) => v.campaign === campaign.subject
       );
       const totalViews = viewRecords.reduce((sum, v) => sum + (v.views || 0), 0);
@@ -293,7 +301,17 @@ const getCampaignAnalytics = async (campaignId) => {
         matchedClicks: matchedClicks.map((c) => ({ url: c.url, clicks: c.clicks || 0 })),
         allClicks: allClicks.map((c) => ({ url: c.url, clicks: c.clicks || 0 })),
       });
-    } catch {
+    } catch (err) {
+      exportFailCount++;
+      if (!firstFailLogged) {
+        firstFailLogged = true;
+        console.error(
+          `[Listmonk] exportSubscriber GAGAL untuk subscriber id=${sub.id} (${sub.email}):`,
+          'status=', err.response?.status,
+          'msg=', err.message,
+          'data=', JSON.stringify(err.response?.data)
+        );
+      }
       subscriberResults.push({
         id: sub.id,
         email: sub.email,
@@ -307,6 +325,12 @@ const getCampaignAnalytics = async (campaignId) => {
       });
     }
   }
+
+  console.log(
+    `[Listmonk] Analytics campaign id=${campaignId} subject="${campaign.subject}": ` +
+    `${subscribers.length} subscriber, export OK=${exportOkCount} GAGAL=${exportFailCount}, ` +
+    `punya campaign_views=${withViewsCount}, tracked URLs=${urls.length}`
+  );
 
   return {
     campaign: {
