@@ -276,7 +276,19 @@ const getCampaignAnalytics = async (campaignId) => {
       exportOkCount++;
 
       const allViewRecords = data.campaign_views || [];
-      if (allViewRecords.length > 0) withViewsCount++;
+      if (allViewRecords.length > 0) {
+        if (withViewsCount === 0) {
+          // Log struktur asli SATU KALI untuk tahu field yang benar
+          console.log(
+            `[Listmonk][SAMPLE] target campaign id=${campaign.id} name="${campaign.name}" subject="${campaign.subject}"`
+          );
+          console.log(
+            `[Listmonk][SAMPLE] campaign_views milik ${sub.email}:`,
+            JSON.stringify(allViewRecords, null, 2)
+          );
+        }
+        withViewsCount++;
+      }
 
       const viewRecords = allViewRecords.filter(
         (v) => v.campaign === campaign.subject
