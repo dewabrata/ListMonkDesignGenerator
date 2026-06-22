@@ -229,16 +229,39 @@ const getAllSubscribers = async () => {
   return all;
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
- * Export aktivitas subscriber.
+ * Export aktivitas subscriber, dengan retry untuk error transient.
+ * Di production, 14+ request berturut-turut ke Listmonk bisa kena rate-limit
+ * (429), timeout, atau connection reset secara acak. Tanpa retry, subscriber
+ * yang kena akan dianggap 0 view/click sehingga hasilnya berubah-ubah tiap refresh.
  * @param {number} subscriberId
+ * @param {number} retries - jumlah percobaan total
  * @returns {Promise<Object>}
  */
-const exportSubscriber = async (subscriberId) => {
-  const response = await axios.get(`${getBaseURL()}/api/subscribers/${subscriberId}/export`, {
-    headers: getAuthHeader(),
-  });
-  return response.data;
+const exportSubscriber = async (subscriberId, retries = 4) => {
+  let lastErr;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await axios.get(
+        `${getBaseURL()}/api/subscribers/${subscriberId}/export`,
+        {
+          headers: getAuthHeader(),
+          timeout: 20000,
+        }
+      );
+      return response.data;
+    } catch (err) {
+      lastErr = err;
+      const status = err.response?.status;
+      // Retry hanya untuk error transient: network/timeout (no status), 429, atau 5xx
+      const transient = !status || status === 429 || status >= 500;
+      if (!transient || attempt === retries) break;
+      await sleep(attempt * 600); // backoff: 600ms, 1200ms, 1800ms
+    }
+  }
+  throw lastErr;
 };
 
 /**
@@ -343,6 +366,13 @@ const getCampaignAnalytics = async (campaignId) => {
     `${subscribers.length} subscriber, export OK=${exportOkCount} GAGAL=${exportFailCount}, ` +
     `punya campaign_views=${withViewsCount}, tracked URLs=${urls.length}`
   );
+
+  if (exportFailCount > 0) {
+    console.warn(
+      `[Listmonk] PERINGATAN: ${exportFailCount} export subscriber tetap gagal setelah retry. ` +
+      `Hasil per-subscriber mungkin tidak lengkap.`
+    );
+  }
 
   return {
     campaign: {
